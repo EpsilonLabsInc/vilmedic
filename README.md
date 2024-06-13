@@ -1,3 +1,11 @@
+For epsilon usage, 
+
+Install missing libraries as run the cmd below
+
+```
+phothon3 -m vilmedic.blocks.scorers.scores
+```
+
 **News**
 | Papers  | | 
 | ----------- | ----------- |
