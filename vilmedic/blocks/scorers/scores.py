@@ -1,12 +1,14 @@
-import os
-import numpy as np
 import json
-import torch.nn.functional as F
-import torch
 import logging
-from radgraph import F1RadGraph
+import os
+
+import numpy as np
+import torch
+import torch.nn.functional as F
 from f1chexbert import F1CheXbert
+from radgraph import F1RadGraph
 from sklearn.metrics import classification_report, roc_auc_score
+
 from . import *
 from .utils import get_logger_directory
 
@@ -54,8 +56,7 @@ def compute_scores(
 
     # Dump
     if dump:
-
-        print('---------------')
+        print("---------------")
         print([logger])
         print([get_logger_directory(logger)])
 
@@ -76,7 +77,6 @@ def compute_scores(
             f.close()
 
     for metric in metrics:
-
         print("Checking metric: ", metric)
 
         # metric_args = dict()
@@ -93,7 +93,26 @@ def compute_scores(
         if metric == "BLEU":
             scores["BLEU"] = Bleu()(refs, hyps)[0]
         elif metric == "METEOR":
-            scores["METEOR"] = Meteor()(refs, hyps)[0]
+            import nltk
+            from nltk.tokenize import word_tokenize
+            from nltk.translate.meteor_score import meteor_score
+
+            nltk.download("wordnet")
+            nltk.download("punkt")
+
+            tokenized_references = [word_tokenize(ref) for ref in refs]
+            tokenized_hypotheses = [word_tokenize(hyp) for hyp in hyps]
+
+            # Calculate METEOR score for each pair of reference and hypothesis
+            metero_scores = [
+                meteor_score([ref], hyp)
+                for ref, hyp in zip(tokenized_references, tokenized_hypotheses)
+            ]
+
+            mean_score = np.mean(metero_scores)
+
+            # scores["METEOR"] = Meteor()(refs, hyps)[0]
+            scores["METEOR"] = mean_score
         elif metric == "CIDERD":
             scores["CIDERD"] = CiderD()(refs, hyps)[0]
         elif metric == "bertscore":
@@ -140,9 +159,7 @@ def compute_scores(
                 scores["radgraph_complete"],
             ) = F1RadGraph(reward_level="all", model_type="radgraph-xl")(
                 refs=refs, hyps=hyps
-            )[
-                0
-            ]
+            )[0]
         elif metric == "stanford_ct_abd_accuracy":
             scores["stanford_ct_abd"] = StanfordCTAbdAcc()(refs=refs, hyps=hyps)[0]
         else:
@@ -160,15 +177,29 @@ def compute_scores(
     return scores
 
 
+def get_text(text):
+    # Find the position of 'Assistant: '
+    assistant_key = "Assistant: "
+    start_idx = text.find(assistant_key)
+
+    # Extract the text after 'Assistant: '
+    if start_idx != -1:
+        text = text[start_idx + len(assistant_key) :]
+
+    return text
+
+
 if __name__ == "__main__":
+    import re
+
     metrics = [
         "BLEU",
-        # "METEOR",
+        "METEOR",
         "CIDERD",
-        "bertscore",
         "ROUGE1",
         "ROUGE2",
         "ROUGEL",
+        "bertscore",
         # "accuracy",
         # "f1-score",
         # "auroc",
@@ -176,23 +207,54 @@ if __name__ == "__main__":
         # "radentitymatchexact",
         # "radentitynli",
         "radgraph",
-        "stanford_ct_abd_accuracy",
+        # "stanford_ct_abd_accuracy",
     ]
 
-
     import pickle
-    with open('../CheXagent_k8s/infer_res_epoch_1.pkl', 'rb') as f:
+
+    file_path = "../CheXagent_k8s/infer_res_with_report_500_epoch_2.pkl"
+    file_path = "../CheXagent_k8s/infer_res_with_report_1000_epoch_20.pkl"
+    file_path = "../CheXagent_k8s/infer_res_with_report_500_epoch_10.pkl"
+
+    file_path = "/mnt/data/ruian/idefics2/eval_res/infer_res_step_342_100.pkl"
+
+    print(f"Loading data from {file_path}")
+
+    with open(file_path, "rb") as f:
         loaded_data = pickle.load(f)
 
     # refs = [
     #     "The lung volumes are slightly low, with elevation of the right hemidiaphragm. There is mild peribronchial cuffing and engorgement of the pulmonary vasculature. Blunting of the costophrenic angles may represent small bilateral pleural effusions. There is no pneumothorax or consolidation concerning for pneumonia. The heart size is top-normal."
     # ]
-    # hyps = refs
     # # hyps = [
     # #     "The endotracheal tube has been removed. The cardiac and mediastinal silhouettes are stable. There is mild pulmonary vascular congestion. No focal consolidation, pleural effusion or pneumothorax is seen."
     # # ]
 
-    hyps = [each[1] for each in loaded_data]
-    refs = [each[2] for each in loaded_data]
+    # Regular expression pattern to extract the epoch number
+    pattern = r"epoch_(\d+)\.pkl"
 
-    compute_scores(metrics, refs, hyps, logger=logging.getLogger("test"), dump=True)
+    # Search for the pattern in the file path
+    match = re.search(pattern, file_path)
+
+    # If a match is found, extract the epoch number
+    if match:
+        epoch_number = int(match.group(1))
+        print(f"Epoch number: {epoch_number}")
+    else:
+        epoch_number = 1234567
+        print("Epoch number not found in the file path.")
+
+    # refs = [each['report_entry'] for each in loaded_data[:500]] # truth
+    # hyps = [each['response'] for each in loaded_data[:500]] # prediction
+
+    refs = [each["truth"] for each in loaded_data[:500]]  # truth
+    hyps = [get_text(each["generated"]) for each in loaded_data[:500]]  # prediction
+
+    compute_scores(
+        metrics,
+        refs,
+        hyps,
+        logger=logging.getLogger("test"),
+        dump=True,
+        epoch=epoch_number,
+    )
