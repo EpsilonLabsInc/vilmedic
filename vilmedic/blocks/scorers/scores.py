@@ -1,3 +1,4 @@
+import sys
 import json
 import logging
 import os
@@ -40,6 +41,7 @@ def compute_scores(
     epoch=999,
     logger=None,
     dump=True,
+    description=""
 ):
     scores = dict()
     # If metric is None or empty list
@@ -63,10 +65,10 @@ def compute_scores(
         # base = os.path.join(
         #     get_logger_directory(logger), "{}_{}_{}".format(split, seed, "{}")
         # )
-        base = f"logs/{split}_{seed}_{{}}"
+        base = f"logs/{split}_{seed}_{description}_{{}}"
         refs_file = base.format("refs.txt")
         hyps_file = base.format("hyps.txt")
-        metrics_file = base.format("metrics.txt")
+        metrics_file = base.format("metrics.jsonl")
 
         with open(refs_file, "w") as f:
             f.write("\n".join(map(str, refs)))
@@ -91,7 +93,10 @@ def compute_scores(
 
         # Iterating over metrics
         if metric == "BLEU":
-            scores["BLEU"] = Bleu()(refs, hyps)[0]
+            scores["BLEU-1"] = Bleu(1)(refs, hyps)[0]
+            scores["BLEU-2"] = Bleu(2)(refs, hyps)[0]
+            scores["BLEU-3"] = Bleu(3)(refs, hyps)[0]
+            scores["BLEU-4"] = Bleu(4)(refs, hyps)[0]
         elif metric == "METEOR":
             import nltk
             from nltk.tokenize import word_tokenize
@@ -167,13 +172,15 @@ def compute_scores(
 
     if dump:
         with open(metrics_file, "a+") as f:
-            f.write(
-                json.dumps(
-                    {"split": split, "epoch": epoch, "scores": scores},
-                    indent=4,
-                    sort_keys=False,
-                )
-            )
+            # f.write(
+            #     json.dumps(
+            #         {"split": split, "epoch": epoch, "scores": scores},
+            #         indent=4,
+            #         sort_keys=False,
+            #     )
+            # )
+            data = {"split": split, "epoch": epoch, "scores": scores}
+            f.write(json.dumps(data) + "\n")
     return scores
 
 
@@ -189,9 +196,49 @@ def get_text(text):
     return text
 
 
-if __name__ == "__main__":
-    import re
+def process_one_checkpoint(compute_scores, get_text, metrics, file_path, description):
+    print(f"Loading data from {file_path}")
 
+    with open(file_path, "rb") as f:
+        loaded_data = pickle.load(f)
+
+    # Regular expression pattern to extract the epoch number
+    pattern = r"checkpoint-(\d+)\.pkl"
+
+    # Search for the pattern in the file path
+    match = re.search(pattern, file_path)
+
+    if match:
+        epoch_number = int(match.group(1))
+        print(f"Epoch number: {epoch_number}")
+    else:
+        epoch_number = 1234567
+        print("Epoch number not found in the file path.")
+
+    refs = [each["truth"] for each in loaded_data[:500]]  # truth
+    hyps = [get_text(each["generated"]) for each in loaded_data[:500]]  # prediction
+
+    compute_scores(
+        metrics,
+        refs,
+        hyps,
+        logger=logging.getLogger("test"),
+        dump=True,
+        epoch=epoch_number,
+        description=description
+    )
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Usage: python3 -m vilmedic.blocks.scorers.scores <description>")
+        sys.exit(1)
+
+    description = sys.argv[1]
+
+    import re
+    # metrics = [
+    #     "radgraph",
+    # ]
     metrics = [
         "BLEU",
         "METEOR",
@@ -212,49 +259,52 @@ if __name__ == "__main__":
 
     import pickle
 
-    file_path = "../CheXagent_k8s/infer_res_with_report_500_epoch_2.pkl"
-    file_path = "../CheXagent_k8s/infer_res_with_report_1000_epoch_20.pkl"
-    file_path = "../CheXagent_k8s/infer_res_with_report_500_epoch_10.pkl"
+    # file_path = "../CheXagent_k8s/infer_res_with_report_500_epoch_2.pkl"
+    # file_path = "../CheXagent_k8s/infer_res_with_report_1000_epoch_20.pkl"
+    # file_path = "../CheXagent_k8s/infer_res_with_report_500_epoch_10.pkl"
 
-    file_path = "/mnt/data/ruian/idefics2/eval_res/infer_res_step_342_100.pkl"
+    # file_path = "/mnt/data/ruian/idefics2/eval_res/infer_res_step_342_100.pkl"
+    # file_path = "/root/projects/InternVL-Epsi/internvl_chat/output/has_weak_label_1e-7/checkpoint-1000.pkl"
 
-    print(f"Loading data from {file_path}")
+    # new_func(compute_scores, get_text, metrics, file_path)
 
-    with open(file_path, "rb") as f:
-        loaded_data = pickle.load(f)
 
-    # refs = [
-    #     "The lung volumes are slightly low, with elevation of the right hemidiaphragm. There is mild peribronchial cuffing and engorgement of the pulmonary vasculature. Blunting of the costophrenic angles may represent small bilateral pleural effusions. There is no pneumothorax or consolidation concerning for pneumonia. The heart size is top-normal."
-    # ]
-    # # hyps = [
-    # #     "The endotracheal tube has been removed. The cardiac and mediastinal silhouettes are stable. There is mild pulmonary vascular congestion. No focal consolidation, pleural effusion or pneumothorax is seen."
-    # # ]
 
-    # Regular expression pattern to extract the epoch number
-    pattern = r"epoch_(\d+)\.pkl"
+    import glob
+    import os
 
-    # Search for the pattern in the file path
-    match = re.search(pattern, file_path)
+    # Directory path containing the .pkl files
+    directory_path = "/root/projects/InternVL-Epsi/internvl_chat/output/has_weak_label_1e-7"
+    directory_path = "/root/projects/InternVL-Epsi/internvl_chat/output/1e-7_no_weak_label"
+    directory_path = "/root/projects/InternVL-Epsi/internvl_chat/output/1e-6_no_weak_label"
+    directory_path = "/root/projects/InternVL-Epsi/internvl_chat/output/1e-5_no_weak_label"
+    directory_path = "/root/projects/InternVL-Epsi/internvl_chat/output/1e-4_no_weak_label-1"
+    directory_path = "/root/projects/InternVL-Epsi/internvl_chat/output/1e-4_full_no_weak_label-1/"
+    directory_path = "/root/projects/InternVL-Epsi/internvl_chat/output/5e-5_full_no_weak_label/"
+    directory_path = "/root/projects/InternVL-Epsi/internvl_chat/output/1e-5_full_has_weak_label_big/"
+    directory_path = "/root/projects/InternVL-Epsi/internvl_chat/output/raw_internvl2/"
+    # directory_path = "/root/projects/InternVL-Epsi/internvl_chat/output/qwen2/"
+    # directory_path = "/root/projects/InternVL-Epsi/internvl_chat/output/1e-4_has_correct_label/"
+    # directory_path = "/root/projects/InternVL-Epsi/internvl_chat/output/1e-5_has_correct_label/"
+    # # directory_path = "/root/projects/InternVL-Epsi/internvl_chat/output/5e-5_has_correct_label/"
+    # directory_path = "/root/projects/InternVL-Epsi/internvl_chat/output/1e-5_gradient/"
+    directory_path = "/root/projects/InternVL-Epsi/internvl_chat/output/1e-5_gradient_eval_gradient"
+    directory_path = "/root/projects/InternVL-Epsi/internvl_chat/output/intern_mimic_gpt/"
+    directory_path = "/root/projects/InternVL-Epsi/internvl_chat/output/qwen2/mimic_gpt/"
+    directory_path = "/root/projects/InternVL-Epsi/internvl_chat/output/qwen2/mimic_gpt_multi_1024/"
+    directory_path = "/root/projects/llama-recipes/evaluation/output/mimic/llama3.2/"
 
-    # If a match is found, extract the epoch number
-    if match:
-        epoch_number = int(match.group(1))
-        print(f"Epoch number: {epoch_number}")
-    else:
-        epoch_number = 1234567
-        print("Epoch number not found in the file path.")
+    # Get all .pkl files in the directory
+    pkl_files = glob.glob(os.path.join(directory_path, "*.pkl"))
 
-    # refs = [each['report_entry'] for each in loaded_data[:500]] # truth
-    # hyps = [each['response'] for each in loaded_data[:500]] # prediction
+    try:
+        sorted_pkl_files = sorted(pkl_files, key=lambda x: int(x.split('checkpoint-')[-1].split('.pkl')[0]))
+        # sorted_pkl_files = sorted(pkl_files, key=lambda x: int(x.split('checkpoint_lora_')[-1].split('.pkl')[0]))
+    except:
+        sorted_pkl_files = sorted(pkl_files)
+    print(sorted_pkl_files)
 
-    refs = [each["truth"] for each in loaded_data[:500]]  # truth
-    hyps = [get_text(each["generated"]) for each in loaded_data[:500]]  # prediction
-
-    compute_scores(
-        metrics,
-        refs,
-        hyps,
-        logger=logging.getLogger("test"),
-        dump=True,
-        epoch=epoch_number,
-    )
+    # Run new_func for each .pkl file
+    for file_path in sorted_pkl_files:
+        print(f"Processing {file_path}")
+        process_one_checkpoint(compute_scores, get_text, metrics, file_path, description)
