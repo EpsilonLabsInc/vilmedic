@@ -3,7 +3,7 @@ For epsilon usage,
 Install missing libraries as run the cmd below
 
 ```
-python3 -m vilmedic.blocks.scorers.scores
+python -m vilmedic.blocks.scorers.scores llama3.2_gpt
 ```
 
 **News**
