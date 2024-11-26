@@ -9,6 +9,9 @@ import torch.nn.functional as F
 from f1chexbert import F1CheXbert
 from radgraph import F1RadGraph
 from sklearn.metrics import classification_report, roc_auc_score
+import pickle
+import glob
+import re
 
 from . import *
 from .utils import get_logger_directory
@@ -247,17 +250,16 @@ if __name__ == "__main__":
         "ROUGE2",
         "ROUGEL",
         "bertscore",
+        "chexbert",
+        "radgraph",
         # "accuracy",
         # "f1-score",
         # "auroc",
-        "chexbert",
         # "radentitymatchexact",
         # "radentitynli",
-        "radgraph",
         # "stanford_ct_abd_accuracy",
     ]
 
-    import pickle
 
     # file_path = "../CheXagent_k8s/infer_res_with_report_500_epoch_2.pkl"
     # file_path = "../CheXagent_k8s/infer_res_with_report_1000_epoch_20.pkl"
@@ -269,9 +271,6 @@ if __name__ == "__main__":
     # new_func(compute_scores, get_text, metrics, file_path)
 
 
-
-    import glob
-    import os
 
     # Directory path containing the .pkl files
     directory_path = "/root/projects/InternVL-Epsi/internvl_chat/output/has_weak_label_1e-7"
@@ -293,18 +292,36 @@ if __name__ == "__main__":
     directory_path = "/root/projects/InternVL-Epsi/internvl_chat/output/qwen2/mimic_gpt/"
     directory_path = "/root/projects/InternVL-Epsi/internvl_chat/output/qwen2/mimic_gpt_multi_1024/"
     directory_path = "/root/projects/llama-recipes/evaluation/output/mimic/llama3.2/"
+    directory_path = "/root/projects/llama-recipes/evaluation/output/mimic/llama3.2-1014/"
+    directory_path = "/root/projects/llama-recipes/evaluation/output/mimic/llama3.2-1015/"
+    directory_path = "/root/projects/vilmedic/data/ct_output/10292024/"
+    directory_path = "/mnt/data/ruian/internvl2/pkls/mimic_sav_1112_5e-6/"
+    directory_path = "/mnt/data/ruian/internvl2/pkls/mimic_sav_1112_1e-5/"
+    directory_path = "/root/projects/vilmedic/data/dong"
+    directory_path = "/mnt/data/ruian/internvl2/pkls/no_label/no_label-final_output.pkl"
+    directory_path = "/mnt/data/ruian/internvl2/pkls/with_label//with_label-final_output.pkl"
+
+    directory_path = "/mnt/data/ruian/internvl2/pkls/no_label_all/checkpoint-107524.pkl"
+    directory_path = "/mnt/data/ruian/internvl2/pkls/with_label/with_label-final_output.pkl"
+
 
     # Get all .pkl files in the directory
-    pkl_files = glob.glob(os.path.join(directory_path, "*.pkl"))
+    sorted_pkl_files = pkl_files = glob.glob(os.path.join(directory_path, "*.pkl"))
 
-    try:
-        sorted_pkl_files = sorted(pkl_files, key=lambda x: int(x.split('checkpoint-')[-1].split('.pkl')[0]))
-        # sorted_pkl_files = sorted(pkl_files, key=lambda x: int(x.split('checkpoint_lora_')[-1].split('.pkl')[0]))
-    except:
-        sorted_pkl_files = sorted(pkl_files)
-    print(sorted_pkl_files)
+    if directory_path.endswith("pkl"):
+        print(f"Processing {directory_path}")
+        process_one_checkpoint(compute_scores, get_text, metrics, directory_path, description)
+    else:
+        try:
+            sorted_pkl_files = sorted(pkl_files, key=lambda x: int(x.split('checkpoint-')[-1].split('.pkl')[0]))
+            # sorted_pkl_files = sorted(pkl_files, key=lambda x: int(x.split('checkpoint_lora_')[-1].split('.pkl')[0]))
+        except:
+            sorted_pkl_files = sorted(pkl_files)
+        print(sorted_pkl_files)
 
-    # Run new_func for each .pkl file
-    for file_path in sorted_pkl_files:
-        print(f"Processing {file_path}")
-        process_one_checkpoint(compute_scores, get_text, metrics, file_path, description)
+        # Run new_func for each .pkl file
+        for file_path in sorted_pkl_files:
+            print(f"Processing {file_path}")
+            # if not '7000' in file_path:
+            #     continue
+            process_one_checkpoint(compute_scores, get_text, metrics, file_path, description)
