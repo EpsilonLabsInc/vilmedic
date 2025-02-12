@@ -68,7 +68,11 @@ def compute_scores(
         # base = os.path.join(
         #     get_logger_directory(logger), "{}_{}_{}".format(split, seed, "{}")
         # )
-        base = f"logs/{split}_{seed}_{description}_{{}}"
+        base_dir = f"logs/{description}"
+        print(f"Creating directory: {base_dir}")
+        os.makedirs(base_dir, exist_ok=True)
+
+        base = f"logs/{description}/{split}_{seed}_{{}}"
         refs_file = base.format("refs.txt")
         hyps_file = base.format("hyps.txt")
         metrics_file = base.format("metrics.jsonl")
@@ -144,6 +148,9 @@ def compute_scores(
                 refs_filename=base.format("refs.chexbert.txt") if dump else None,
                 hyps_filename=base.format("hyps.chexbert.txt") if dump else None,
             )(hyps, refs)
+            
+            print(chexbert_all)
+            
             scores["chexbert-5_micro avg_f1-score"] = chexbert_5["micro avg"][
                 "f1-score"
             ]
@@ -202,8 +209,47 @@ def get_text(text):
 def process_one_checkpoint(compute_scores, get_text, metrics, file_path, description):
     print(f"Loading data from {file_path}")
 
-    with open(file_path, "rb") as f:
-        loaded_data = pickle.load(f)
+    if file_path.endswith("pkl"):
+        with open(file_path, "rb") as f:
+            loaded_data = pickle.load(f)
+
+    if file_path.endswith("json"):
+        with open(file_path, 'r', encoding='utf-8') as file:
+            loaded_data = json.load(file)
+
+    if file_path.endswith("jsonl"):
+        infer_data = []
+        with open(file_path, 'r', encoding='utf-8') as f:
+            for line in f:
+                # Parse each line as a JSON object
+                infer_data.append(json.loads(line.strip()))
+        loaded_data = []
+
+        for entry in infer_data:
+
+            labels = entry.get('labels', [])
+            loaded_data.append({
+                "truth": entry['conversations'][1]['value'],
+                "generated": entry['generated'],
+                "labels": labels
+            })
+
+    if file_path.endswith("csv"):
+        import pandas as pd
+        loaded_data = []
+
+        df = pd.read_csv("./26b_Sheet4.csv")
+        truths = df['truth'].values
+        generates = df['generated_11818_gradient123_mimic_chex'].values
+
+        for truth, generate in zip(truths, generates):
+            loaded_data.append({
+                "truth": truth,
+                "generated": generate
+            })
+
+    print(f"Loaded {len(loaded_data)} samples")
+    print(loaded_data[0])
 
     # Regular expression pattern to extract the epoch number
     pattern = r"checkpoint-(\d+)\.pkl"
@@ -218,8 +264,12 @@ def process_one_checkpoint(compute_scores, get_text, metrics, file_path, descrip
         epoch_number = 1234567
         print("Epoch number not found in the file path.")
 
-    refs = [each["truth"] for each in loaded_data[:500]]  # truth
-    hyps = [get_text(each["generated"]) for each in loaded_data[:500]]  # prediction
+
+    refs = [each["truth"] for each in loaded_data]  # truth
+    hyps = [get_text(each["generated"]) for each in loaded_data]  # prediction
+
+    # refs = [each["ground_truth"] for each in loaded_data[:500]]  # truth
+    # hyps = [get_text(each["generated_report"]) for each in loaded_data[:500]]  # prediction
 
     compute_scores(
         metrics,
@@ -273,42 +323,17 @@ if __name__ == "__main__":
 
 
     # Directory path containing the .pkl files
-    directory_path = "/root/projects/InternVL-Epsi/internvl_chat/output/has_weak_label_1e-7"
-    directory_path = "/root/projects/InternVL-Epsi/internvl_chat/output/1e-7_no_weak_label"
-    directory_path = "/root/projects/InternVL-Epsi/internvl_chat/output/1e-6_no_weak_label"
-    directory_path = "/root/projects/InternVL-Epsi/internvl_chat/output/1e-5_no_weak_label"
-    directory_path = "/root/projects/InternVL-Epsi/internvl_chat/output/1e-4_no_weak_label-1"
-    directory_path = "/root/projects/InternVL-Epsi/internvl_chat/output/1e-4_full_no_weak_label-1/"
-    directory_path = "/root/projects/InternVL-Epsi/internvl_chat/output/5e-5_full_no_weak_label/"
-    directory_path = "/root/projects/InternVL-Epsi/internvl_chat/output/1e-5_full_has_weak_label_big/"
-    directory_path = "/root/projects/InternVL-Epsi/internvl_chat/output/raw_internvl2/"
-    # directory_path = "/root/projects/InternVL-Epsi/internvl_chat/output/qwen2/"
-    # directory_path = "/root/projects/InternVL-Epsi/internvl_chat/output/1e-4_has_correct_label/"
-    # directory_path = "/root/projects/InternVL-Epsi/internvl_chat/output/1e-5_has_correct_label/"
-    # # directory_path = "/root/projects/InternVL-Epsi/internvl_chat/output/5e-5_has_correct_label/"
-    # directory_path = "/root/projects/InternVL-Epsi/internvl_chat/output/1e-5_gradient/"
-    directory_path = "/root/projects/InternVL-Epsi/internvl_chat/output/1e-5_gradient_eval_gradient"
-    directory_path = "/root/projects/InternVL-Epsi/internvl_chat/output/intern_mimic_gpt/"
-    directory_path = "/root/projects/InternVL-Epsi/internvl_chat/output/qwen2/mimic_gpt/"
-    directory_path = "/root/projects/InternVL-Epsi/internvl_chat/output/qwen2/mimic_gpt_multi_1024/"
-    directory_path = "/root/projects/llama-recipes/evaluation/output/mimic/llama3.2/"
-    directory_path = "/root/projects/llama-recipes/evaluation/output/mimic/llama3.2-1014/"
-    directory_path = "/root/projects/llama-recipes/evaluation/output/mimic/llama3.2-1015/"
-    directory_path = "/root/projects/vilmedic/data/ct_output/10292024/"
-    directory_path = "/mnt/data/ruian/internvl2/pkls/mimic_sav_1112_5e-6/"
-    directory_path = "/mnt/data/ruian/internvl2/pkls/mimic_sav_1112_1e-5/"
-    directory_path = "/root/projects/vilmedic/data/dong"
-    directory_path = "/mnt/data/ruian/internvl2/pkls/no_label/no_label-final_output.pkl"
-    directory_path = "/mnt/data/ruian/internvl2/pkls/with_label//with_label-final_output.pkl"
 
-    directory_path = "/mnt/data/ruian/internvl2/pkls/no_label_all/checkpoint-107524.pkl"
-    directory_path = "/mnt/data/ruian/internvl2/pkls/with_label/with_label-final_output.pkl"
+    directory_path = "/root/projects/InternVL-Epsi/internvl_chat/test_data/all_on_136_0202"
+    # directory_path = "/root/projects/InternVL-Epsi/internvl_chat/test_data/all_on_all_0202"
 
 
     # Get all .pkl files in the directory
-    sorted_pkl_files = pkl_files = glob.glob(os.path.join(directory_path, "*.pkl"))
+    pkl_files = glob.glob(os.path.join(directory_path, "*.pkl"))
 
-    if directory_path.endswith("pkl"):
+    pkl_files = [each for each in pkl_files if not "label" in each.split("/")[-1]]
+
+    if directory_path.endswith(("pkl", "json", "jsonl", "csv")):
         print(f"Processing {directory_path}")
         process_one_checkpoint(compute_scores, get_text, metrics, directory_path, description)
     else:

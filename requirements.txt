@@ -1,12 +1,15 @@
 omegaconf
-appdirs
+# appdirs
 gdown
 monai
-scikit-learn
+# scikit-learn
 seaborn
-pydicom
+# pydicom
 rouge_score
 bert_score
 stanza
 f1chexbert
-# radgraph
+# radgraph # install from https://github.com/EpsilonLabsInc/radgraph_bugfree
+
+datasets
+pydicom
