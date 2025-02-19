@@ -341,7 +341,13 @@ def main():
     directory_path = "/root/projects/InternVL-Epsi/internvl_chat/test_data/26b_labels_on_random_laebl_0203-2/"
     directory_path = "/root/projects/InternVL-Epsi/internvl_chat/test_data/26b_labels_gradient_0722"
 
-    directory_path = "/root/projects/InternVL-Epsi/internvl_chat/test_data/26b_continue_on_filter"
+    directory_path = "/home/ruian/projects/InternVL-Epsi/internvl_chat/test_data/pkls/26b_continue_on_filter"
+    directory_path = "/home/ruian/projects/InternVL-Epsi/internvl_chat/test_data/pkls/26b_single_label_1label"
+    directory_path = "/home/ruian/projects/InternVL-Epsi/internvl_chat/test_data/pkls/26b_single_label_1label_double_consoli_enlarge"
+    directory_path = "/home/ruian/projects/InternVL-Epsi/internvl_chat/test_data/pkls/26b_single_label_1label_full_parameters"
+    directory_path = "/home/ruian/projects/InternVL-Epsi/internvl_chat/test_data/pkls/26b_single_label_1label_full_parameters2"
+    directory_path = "/home/ruian/projects/InternVL-Epsi/internvl_chat/test_data/pkls/26b_single_label_1label_lora2"
+    directory_path = "/home/ruian/projects/InternVL-Epsi/internvl_chat/test_data/pkls/26b_single_label_1label_lora-3k/"
 
     # Get all .pkl files from the directory.
     pkl_files = glob.glob(os.path.join(directory_path, "*.pkl"))
