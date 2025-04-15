@@ -299,10 +299,10 @@ def process_checkpoint_label(compute_scores, get_text, metrics, file_path, descr
 
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: python3 -m vilmedic.blocks.scorers.combined_scores <description>")
-        sys.exit(1)
-    description = sys.argv[1]
+    # if len(sys.argv) < 2:
+    #     print("Usage: python3 -m vilmedic.blocks.scorers.combined_scores <description>")
+    #     sys.exit(1)
+    # description = sys.argv[1]
 
     # Define the metrics you want to compute.
     metrics_normal = [
@@ -329,25 +329,20 @@ def main():
 
 
     # Set your directory path here.
-    directory_path = "/root/projects/InternVL-Epsi/internvl_chat/test_data/all_on_136_0202"
+    # directory_path = "/home/eric/projects/InternVL-Epsi/internvl_chat/test_data/pkls/26b_single_label_1label_lora-3k/"
+    directory_path = "/home/eric/projects/InternVL-Epsi/internvl_chat/test_data/pkls/chimera_13b_mimic/"
+    directory_path = "/home/eric/projects/InternVL-Epsi/internvl_chat/test_data/pkls/2.5_8b_mimic/"
+    directory_path = "/home/eric/projects/InternVL-Epsi/internvl_chat/test_data/pkls/26b_mimic/"
+    directory_path = "/home/eric/projects/InternVL-Epsi/internvl_chat/test_data/pkls/chimera_mimic_balanced/"
+    directory_path = "/home/eric/projects/InternVL-Epsi/internvl_chat/test_data/pkls/2b_other_parts_4images/"
 
-    # directory_path = "/root/projects/InternVL-Epsi/internvl_chat/test_data/26b_all_on_filter_0202"
-    directory_path = "/root/projects/InternVL-Epsi/internvl_chat/test_data/26b_batch1_on_filter_0203"
-    directory_path = "/root/projects/InternVL-Epsi/internvl_chat/test_data/26b_lunglesion_on_filter_0203"
+    description = directory_path.split("/")[-2]
 
-    directory_path = "/root/projects/InternVL-Epsi/internvl_chat/test_data/26b_sixlabels_on_filter_0203"
+    if not description:
+        print("Description not found.")
+        sys.exit(1)
 
-    directory_path = "/root/projects/InternVL-Epsi/internvl_chat/test_data/26b_labels_on_random_laebl_0203"
-    directory_path = "/root/projects/InternVL-Epsi/internvl_chat/test_data/26b_labels_on_random_laebl_0203-2/"
-    directory_path = "/root/projects/InternVL-Epsi/internvl_chat/test_data/26b_labels_gradient_0722"
-
-    directory_path = "/home/ruian/projects/InternVL-Epsi/internvl_chat/test_data/pkls/26b_continue_on_filter"
-    directory_path = "/home/ruian/projects/InternVL-Epsi/internvl_chat/test_data/pkls/26b_single_label_1label"
-    directory_path = "/home/ruian/projects/InternVL-Epsi/internvl_chat/test_data/pkls/26b_single_label_1label_double_consoli_enlarge"
-    directory_path = "/home/ruian/projects/InternVL-Epsi/internvl_chat/test_data/pkls/26b_single_label_1label_full_parameters"
-    directory_path = "/home/ruian/projects/InternVL-Epsi/internvl_chat/test_data/pkls/26b_single_label_1label_full_parameters2"
-    directory_path = "/home/ruian/projects/InternVL-Epsi/internvl_chat/test_data/pkls/26b_single_label_1label_lora2"
-    directory_path = "/home/ruian/projects/InternVL-Epsi/internvl_chat/test_data/pkls/26b_single_label_1label_lora-3k/"
+    print(f"Description: {description}")
 
     # Get all .pkl files from the directory.
     pkl_files = glob.glob(os.path.join(directory_path, "*.pkl"))
